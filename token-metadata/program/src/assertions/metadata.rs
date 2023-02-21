@@ -1,14 +1,18 @@
 use std::collections::HashMap;
 
-use solana_program::{account_info::AccountInfo, entrypoint::ProgramResult, pubkey::Pubkey};
+use solana_program::{
+    account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
+    pubkey::Pubkey,
+};
 use spl_token::state::Account;
 
 use crate::{
     assertions::{assert_initialized, assert_owned_by},
     error::MetadataError,
+    pda::PREFIX,
     state::{
-        Creator, Data, Metadata, MAX_CREATOR_LIMIT, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH,
-        MAX_URI_LENGTH,
+        Creator, Data, Metadata, TokenRecord, TokenState, MAX_CREATOR_LIMIT, MAX_NAME_LENGTH,
+        MAX_SYMBOL_LENGTH, MAX_URI_LENGTH,
     },
 };
 
@@ -174,6 +178,26 @@ pub fn assert_currently_holding(
     mint_info: &AccountInfo,
     token_account_info: &AccountInfo,
 ) -> ProgramResult {
+    assert_holding_amount(
+        program_id,
+        owner_info,
+        metadata_info,
+        metadata,
+        mint_info,
+        token_account_info,
+        1,
+    )
+}
+
+pub fn assert_holding_amount(
+    program_id: &Pubkey,
+    owner_info: &AccountInfo,
+    metadata_info: &AccountInfo,
+    metadata: &Metadata,
+    mint_info: &AccountInfo,
+    token_account_info: &AccountInfo,
+    amount: u64,
+) -> ProgramResult {
     assert_owned_by(metadata_info, program_id)?;
     assert_owned_by(mint_info, &spl_token::id())?;
 
@@ -189,7 +213,7 @@ pub fn assert_currently_holding(
         return Err(MetadataError::MintMismatch.into());
     }
 
-    if token_account.amount < 1 {
+    if token_account.amount < amount {
         return Err(MetadataError::NotEnoughTokens.into());
     }
 
@@ -197,4 +221,61 @@ pub fn assert_currently_holding(
         return Err(MetadataError::MintMismatch.into());
     }
     Ok(())
+}
+
+pub fn assert_metadata_valid(
+    program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    metadata_account_info: &AccountInfo,
+) -> ProgramResult {
+    let seeds = &[PREFIX.as_bytes(), program_id.as_ref(), mint_pubkey.as_ref()];
+    let (metadata_pubkey, _) = Pubkey::find_program_address(seeds, program_id);
+    if metadata_pubkey != *metadata_account_info.key {
+        return Err(MetadataError::InvalidMetadataKey.into());
+    }
+
+    Ok(())
+}
+
+pub fn assert_state(token_record: &TokenRecord, state: TokenState) -> ProgramResult {
+    match state {
+        TokenState::Locked => {
+            if !token_record.is_locked() {
+                return Err(MetadataError::UnlockedToken.into());
+            }
+        }
+        TokenState::Unlocked => {
+            if token_record.is_locked() {
+                return Err(MetadataError::LockedToken.into());
+            }
+        }
+        TokenState::Listed => {
+            if !matches!(token_record.state, TokenState::Listed) {
+                return Err(MetadataError::IncorrectTokenState.into());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn assert_not_locked(token_record: &TokenRecord) -> ProgramResult {
+    assert_state(token_record, TokenState::Unlocked)
+}
+
+pub fn assert_metadata_derivation(
+    program_id: &Pubkey,
+    metadata_info: &AccountInfo,
+    mint_info: &AccountInfo,
+) -> Result<u8, ProgramError> {
+    let path = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        mint_info.key.as_ref(),
+    ];
+    let (pubkey, bump) = Pubkey::find_program_address(path, program_id);
+    if pubkey != *metadata_info.key {
+        return Err(MetadataError::MintMismatch.into());
+    }
+    Ok(bump)
 }
