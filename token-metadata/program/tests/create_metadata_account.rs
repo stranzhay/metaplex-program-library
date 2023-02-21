@@ -576,8 +576,9 @@ mod create_meta_accounts {
     }
 
     #[tokio::test]
+    #[allow(deprecated)]
     async fn fail_bubblegum_owner() {
-        let mut context = &mut program_test().start_with_context().await;
+        let context = &mut program_test().start_with_context().await;
         let test_metadata = Metadata::new();
         let name = "Test".to_string();
         let symbol = "TST".to_string();
@@ -654,7 +655,7 @@ mod create_meta_accounts {
         };
 
         let create_tx = Transaction::new_signed_with_payer(
-            &[instruction::create_metadata_accounts_v2(
+            &[instruction::create_metadata_accounts_v3(
                 id(),
                 test_metadata.pubkey,
                 test_metadata.mint.pubkey(),
@@ -670,6 +671,7 @@ mod create_meta_accounts {
                 true,
                 None,
                 uses.to_owned(),
+                None,
             )],
             Some(&context.payer.pubkey()),
             &[&context.payer, &mint_authority],
