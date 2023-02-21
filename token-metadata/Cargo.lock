@@ -1968,7 +1968,7 @@ dependencies = [
  "bincode",
  "borsh",
  "clap 2.34.0",
- "mpl-token-metadata 1.7.0",
+ "mpl-token-metadata 1.8.4",
  "solana-clap-utils",
  "solana-cli-config",
  "solana-client",
@@ -2062,7 +2062,7 @@ dependencies = [
 
 [[package]]
 name = "mpl-token-metadata"
-version = "1.7.0"
+version = "1.8.4"
 dependencies = [
  "arrayref",
  "borsh",
@@ -2976,7 +2976,7 @@ version = "0.1.0"
 source = "git+https://github.com/metaplex-foundation/rooster#6923ee3bf83957920c64ad271ae7cff80b19ab0e"
 dependencies = [
  "borsh",
- "mpl-token-metadata 1.8.4",
+ "mpl-token-metadata 1.8.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "mpl-utils 0.0.5",
  "num-derive",
  "num-traits",
